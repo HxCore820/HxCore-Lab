@@ -36,9 +36,11 @@ BOT_BIRTHDAY = "1/1/2026"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-# Cấu hình Gemini AI
+# Cấu hình Gemini AI - SỬ DỤNG MODEL GIỐNG BẠN
 genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash-exp')
+MODEL_NAME = 'gemini-flash-latest'  # Giống bản gốc của bạn
+model = genai.GenerativeModel(MODEL_NAME)
+
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ============ HỆ THỐNG ĐIỂM ============
@@ -190,7 +192,7 @@ def about_zun(message):
 
 📅 Ngày sinh: {BOT_BIRTHDAY}
 🎯 Nhiệm vụ: Hỗ trợ AI cho bot Telegram
-🧠 AI Engine: Google Gemini 2.0
+🧠 AI Engine: Google Gemini Flash Latest
 💾 Database: Firebase Firestore
 
 **📌 Đặc điểm:**
@@ -356,7 +358,7 @@ def chat_mode(message):
         f"Hãy gửi câu hỏi ngay nhé! 👇",
         parse_mode='Markdown')
 
-# ============ CHAT AI ============
+# ============ CHAT AI (GIỐNG BẢN GỐC CỦA BẠN) ============
 @bot.message_handler(func=lambda m: True)
 def chat_ai(message):
     user_id = message.from_user.id
@@ -381,22 +383,8 @@ def chat_ai(message):
     try:
         bot.send_chat_action(message.chat.id, 'typing')
         
-        # Tạo prompt cho AI
-        system_prompt = f"""Bạn là {BOT_NAME}, trợ lý AI sinh ngày {BOT_BIRTHDAY}.
-
-TÍNH CÁCH:
-- Thông minh, chuyên nghiệp, thân thiện
-- Trả lời ngắn gọn, súc tích, dễ hiểu
-- Nghiêm túc trong công việc
-- Không dùng emoji quá nhiều
-
-NHIỆM VỤ:
-Trả lời câu hỏi của người dùng một cách chính xác nhất.
-
-Câu hỏi: {message.text}
-"""
-        
-        response = model.generate_content(system_prompt)
+        # Gửi tin nhắn đến Gemini (GIỐNG BẢN GỐC)
+        response = model.generate_content(message.text)
         
         if response.text:
             # Trừ điểm
@@ -406,22 +394,25 @@ Câu hỏi: {message.text}
             reply = f"{response.text}\n\n_💰 Còn {new_points:.1f} điểm ({int(new_points/QUESTION_COST)} câu)_"
             bot.reply_to(message, reply, parse_mode='Markdown')
         else:
-            bot.reply_to(message, "❌ Không nhận được phản hồi. Thử lại!")
+            bot.reply_to(message, "Gemini không phản hồi. Thử hỏi lại bằng cách khác nhé!")
             
     except Exception as e:
-        print(f"Error: {str(e)}")
+        error_msg = str(e)
+        print(f"Lỗi: {error_msg}")
         
-        # Nếu lỗi 404 -> dùng model dự phòng
-        if "404" in str(e):
+        # Xử lý lỗi model cũ (404) bằng cách dùng model dự phòng (GIỐNG BẢN GỐC)
+        if "404" in error_msg:
+            bot.reply_to(message, "Hệ thống đang cập nhật model mới. Vui lòng đợi trong giây lát...")
+            # Thử lại với model 2.0 ổn định
             try:
                 fallback = genai.GenerativeModel('gemini-2.0-flash')
                 res = fallback.generate_content(message.text)
                 new_points = update_points(user_id, -QUESTION_COST)
                 bot.reply_to(message, f"{res.text}\n\n_💰 Còn {new_points:.1f} điểm_", parse_mode='Markdown')
             except:
-                bot.reply_to(message, "❌ Lỗi API. Kiểm tra lại key!")
+                bot.reply_to(message, "Không thể kết nối API. Kiểm tra lại API Key nhé!")
         else:
-            bot.reply_to(message, f"❌ Lỗi: {str(e)}")
+            bot.reply_to(message, "Có lỗi xảy ra, thử lại sau nhé!")
 
 # ============ CALLBACK HANDLERS ============
 @bot.callback_query_handler(func=lambda call: True)
@@ -435,7 +426,7 @@ if __name__ == "__main__":
     print(f"🤖 {BOT_NAME} Bot Starting...")
     print(f"📅 Birthday: {BOT_BIRTHDAY}")
     print(f"✅ Telegram: Connected")
-    print(f"✅ Gemini AI: Ready")
+    print(f"✅ Gemini AI: {MODEL_NAME}")
     print(f"✅ Firebase: {'Connected' if db else 'Offline Mode'}")
     print("=" * 50)
     
